@@ -1,0 +1,61 @@
+name: Coze Workflow Trigger
+
+on:
+  schedule:
+    # 每天UTC时间8:00执行(北京时间16:00)
+    - cron: '0 8 * * *'
+    
+    # 每小时执行一次(每分钟的第0分钟)
+    - cron: '0 * * * *'
+  
+  # 允许在GitHub界面手动触发工作流
+  workflow_dispatch:
+    inputs:
+      custom_param:
+        description: '自定义参数(可选)'
+        required: false
+        default: 'default_value'
+
+jobs:
+  trigger_coze:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@v3
+      
+    # 处理手动输入的参数
+    - name: Set up parameters
+      id: params
+      run: |
+        echo "Manual trigger: ${{ github.event_name == 'workflow_dispatch' }}"
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          echo "Using custom param: ${{ github.event.inputs.custom_param }}"
+          echo "MANUAL_PARAM=${{ github.event.inputs.custom_param }}" >> $GITHUB_OUTPUT
+        else
+          echo "Using default param"
+          echo "MANUAL_PARAM=default_value" >> $GITHUB_OUTPUT
+        fi
+        
+    # 触发Coze工作流
+    - name: Trigger Coze
+      run: |
+        curl -X POST "${{ secrets.CHANZHAO_COZE_API_ENDPOINT }}" \
+        -H "Authorization: Bearer ${{ secrets.CHANZHAO_COZE_API_KEY }}" \
+        -H "Content-Type: application/json" \
+        -d '{
+          "trigger_source": "github_actions",
+          "trigger_time": "${{ steps.date.outputs.DATETIME }}",
+          "custom_param": "${{ steps.params.outputs.MANUAL_PARAM }}"
+        }'
+        
+    # 获取当前时间(用于日志和请求参数)
+    - name: Get current time
+      id: date
+      run: echo "DATETIME=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
+      
+    # 记录执行信息
+    - name: Log execution info
+      run: |
+        echo "Triggered at: ${{ steps.date.outputs.DATETIME }}"
+        echo "Trigger type: ${{ github.event_name }}"
+        echo "Run number: ${{ github.run_number }}"
