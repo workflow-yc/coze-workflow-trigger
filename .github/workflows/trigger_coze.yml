@@ -2,24 +2,54 @@ name: Coze Workflow Trigger
 
 on:
   schedule:
-    - cron: '0 0 * * *'  # 每天UTC 0点(北京时间8点)
-    - cron: '0 * * * *'  # 每小时
+    # 每天 UTC 0:00 执行（对应北京/上海时间 8:00）
+    - cron: '0 0 * * *'
+    # 每小时执行一次（每小时的第 0 分钟）
+    - cron: '0 * * * *'
+  
+  # 允许在 GitHub 网页端手动触发
   workflow_dispatch:
+    inputs:
+      custom_params:
+        description: '自定义JSON参数 (可选，默认为空对象 {})'
+        required: false
+        default: '{}'
 
 env:
   TZ: Asia/Shanghai
-  COZE_API_URL: https://api.coze.cn/v1/workflow/run
+  COZE_API_URL: "https://api.coze.cn/v1/workflow/run"
+  WORKFLOW_ID: ${{ vars.WORKFLOW_ID }}
 
 jobs:
-  trigger:
+  trigger_coze:
     runs-on: ubuntu-latest
     steps:
-    - name: Trigger Coze
+    - name: 打印当前时间 (验证上海时区)
+      run: date
+      
+    - name: 设置请求参数
+      id: set_params
       run: |
-        curl -X POST "${{ env.CHANGE_COZE_API_URL }}" \
-        -H "Authorization: Bearer ${{ secrets.CHANGE_COZE_API_KEY }}" \
+        # 如果是定时自动触发，custom_params 会为空，这里强制赋予默认值 '{}'
+        PARAMS="${{ github.event.inputs.custom_params }}"
+        if [ -z "$PARAMS" ]; then
+          PARAMS="{}"
+        fi
+        echo "PARAMS=$PARAMS" >> $GITHUB_OUTPUT
+        echo "当前使用的 parameters: $PARAMS"
+
+    - name: 触发 Coze 工作流
+      run: |
+        curl -X POST "${{ env.COZE_API_URL }}" \
+        -H "Authorization: Bearer ${{ secrets.COZE_API_KEY }}" \
         -H "Content-Type: application/json" \
         -d '{
-          "workflow_id": "${{ vars.WORKFLOW_ID }}",
-          "parameters": {}
+          "workflow_id": "${{ env.WORKFLOW_ID }}",
+          "parameters": '${{ steps.set_params.outputs.PARAMS }}'
         }'
+      
+    - name: 记录执行结果
+      run: |
+        echo "Coze 工作流触发请求已发送！"
+        echo "执行时间: $(date +'%Y-%m-%d %H:%M:%S')"
+        echo "工作流 ID: ${{ env.WORKFLOW_ID }}"
