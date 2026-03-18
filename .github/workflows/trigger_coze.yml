@@ -16,65 +16,66 @@ on:
 env:
   TZ: Asia/Shanghai
   COZE_API_URL: "https://api.coze.cn/v1/workflow/run"
-  WORKFLOW_ID_1: ${{ vars.WORKFLOW_ID_1 }} # 第一个工作流的 ID
-  WORKFLOW_ID_2: ${{ vars.WORKFLOW_ID_2 }} # 第二个工作流的 ID
+  # 修复重点：给变量加上双引号，防止 YAML 解析器报错
+  WORKFLOW_ID_1: "${{ vars.WORKFLOW_ID_1 }}"
+  WORKFLOW_ID_2: "${{ vars.WORKFLOW_ID_2 }}"
 
 jobs:
   trigger_coze:
     runs-on: ubuntu-latest
     steps:
-    - name: 打印当前时间 (验证上海时区)
-      run: date
-      
-    - name: 设置请求参数
-      id: set_params
-      run: |
-        # 如果是定时自动触发，custom_params 会为空，这里强制赋予默认值 '{}'
-        PARAMS="${{ github.event.inputs.custom_params }}"
-        if [ -z "$PARAMS" ]; then
-          PARAMS="{}"
-        fi
-        echo "PARAMS=$PARAMS" >> $GITHUB_OUTPUT
-        echo "当前使用的 parameters: $PARAMS"
-
-    - name: 1. 触发并记录第一个 Coze 工作流
-      run: |
-        # 发送第一个请求
-        curl -s -X POST "${{ env.COZE_API_URL }}" \
-        -H "Authorization: Bearer ${{ secrets.COZE_API_KEY }}" \
-        -H "Content-Type: application/json" \
-        -d '{
-          "workflow_id": "${{ env.WORKFLOW_ID_1 }}",
-          "parameters": '${{ steps.set_params.outputs.PARAMS }}'
-        }'
+      - name: 打印当前时间 (验证上海时区)
+        run: date
         
-        # 立即记录第一个的结果
-        echo -e "\n-----------------------------------"
-        echo "✅ 第一个 Coze 工作流触发请求已发送！"
-        echo "执行时间: $(date +'%Y-%m-%d %H:%M:%S')"
-        echo "工作流 ID: ${{ env.WORKFLOW_ID_1 }}"
-        echo "-----------------------------------"
+      - name: 设置请求参数
+        id: set_params
+        run: |
+          # 如果是定时自动触发，custom_params 会为空，这里强制赋予默认值 '{}'
+          PARAMS="${{ github.event.inputs.custom_params }}"
+          if [ -z "$PARAMS" ]; then
+            PARAMS="{}"
+          fi
+          echo "PARAMS=$PARAMS" >> $GITHUB_OUTPUT
+          echo "当前使用的 parameters: $PARAMS"
 
-    - name: 2. 强制等待 5 分钟
-      run: |
-        echo "开始等待 5 分钟 (300秒) 以便第一个工作流执行完毕..."
-        sleep 300
-        echo "等待结束，准备触发第二个工作流！"
+      - name: 1. 触发并记录第一个 Coze 工作流
+        run: |
+          # 发送第一个请求
+          curl -s -X POST "${{ env.COZE_API_URL }}" \
+          -H "Authorization: Bearer ${{ secrets.COZE_API_KEY }}" \
+          -H "Content-Type: application/json" \
+          -d '{
+            "workflow_id": "${{ env.WORKFLOW_ID_1 }}",
+            "parameters": '${{ steps.set_params.outputs.PARAMS }}'
+          }'
+          
+          # 立即记录第一个的结果
+          echo -e "\n-----------------------------------"
+          echo "✅ 第一个 Coze 工作流触发请求已发送！"
+          echo "执行时间: $(date +'%Y-%m-%d %H:%M:%S')"
+          echo "工作流 ID: ${{ env.WORKFLOW_ID_1 }}"
+          echo "-----------------------------------"
 
-    - name: 3. 触发并记录第二个 Coze 工作流
-      run: |
-        # 发送第二个请求
-        curl -s -X POST "${{ env.COZE_API_URL }}" \
-        -H "Authorization: Bearer ${{ secrets.COZE_API_KEY }}" \
-        -H "Content-Type: application/json" \
-        -d '{
-          "workflow_id": "${{ env.WORKFLOW_ID_2 }}",
-          "parameters": '${{ steps.set_params.outputs.PARAMS }}' 
-        }'
-        
-        # 立即记录第二个的结果
-        echo -e "\n-----------------------------------"
-        echo "✅ 第二个 Coze 工作流触发请求已发送！"
-        echo "执行时间: $(date +'%Y-%m-%d %H:%M:%S')"
-        echo "工作流 ID: ${{ env.WORKFLOW_ID_2 }}"
-        echo "-----------------------------------"
+      - name: 2. 强制等待 5 分钟
+        run: |
+          echo "开始等待 5 分钟 (300秒) 以便第一个工作流执行完毕..."
+          sleep 300
+          echo "等待结束，准备触发第二个工作流！"
+
+      - name: 3. 触发并记录第二个 Coze 工作流
+        run: |
+          # 发送第二个请求
+          curl -s -X POST "${{ env.COZE_API_URL }}" \
+          -H "Authorization: Bearer ${{ secrets.COZE_API_KEY }}" \
+          -H "Content-Type: application/json" \
+          -d '{
+            "workflow_id": "${{ env.WORKFLOW_ID_2 }}",
+            "parameters": '${{ steps.set_params.outputs.PARAMS }}' 
+          }'
+          
+          # 立即记录第二个的结果
+          echo -e "\n-----------------------------------"
+          echo "✅ 第二个 Coze 工作流触发请求已发送！"
+          echo "执行时间: $(date +'%Y-%m-%d %H:%M:%S')"
+          echo "工作流 ID: ${{ env.WORKFLOW_ID_2 }}"
+          echo "-----------------------------------"
