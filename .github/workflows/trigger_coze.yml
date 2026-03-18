@@ -2,8 +2,8 @@ name: Coze Workflow Trigger
 
 on:
   schedule:
-    # 改为每小时的第 20 分钟执行，避开整点拥堵
-    - cron: '20 * * * *'
+    # 改为每小时的第 17 分钟执行，避开整点拥堵
+    - cron: '17 * * * *'
   
   # 允许在 GitHub 网页端手动触发
   workflow_dispatch:
@@ -36,16 +36,32 @@ jobs:
         echo "PARAMS=$PARAMS" >> $GITHUB_OUTPUT
         echo "当前使用的 parameters: $PARAMS"
 
-    - name: 触发 Coze 工作流
+    - name: 触发 Coze 工作流：获取信息
+     run: |
+        curl -X POST "${{ env.COZE_API_URL }}" \
+        -H "Authorization: Bearer ${{ secrets.COZE_API_KEY }}" \
+        -H "Content-Type: application/json" \
+        -d '{
+          "workflow_id": "${{ env.WORKFLOW_ID_1 }}",
+          "parameters": "{}"
+        }'
+
+    - name: 强制等待 5 分钟，等第一个工作流完成
+      run: |
+        echo "第一个工作流已触发，开始等待 5 分钟 (300秒)..."
+        sleep 300
+        echo "等待结束！"
+
+    - name: 触发 Coze 工作流：信息分析
       run: |
         curl -X POST "${{ env.COZE_API_URL }}" \
         -H "Authorization: Bearer ${{ secrets.COZE_API_KEY }}" \
         -H "Content-Type: application/json" \
         -d '{
-          "workflow_id": "${{ env.WORKFLOW_ID }}",
-          "parameters": '${{ steps.set_params.outputs.PARAMS }}'
+          "workflow_id": "${{ env.WORKFLOW_ID_2 }}", 
+          "parameters": "{}"
         }'
-      
+        
     - name: 记录执行结果
       run: |
         echo "Coze 工作流触发请求已发送！"
