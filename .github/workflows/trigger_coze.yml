@@ -2,7 +2,7 @@ name: Coze Workflow Trigger
 
 on:
   schedule:
-    # 改为每小时的第 17 分钟执行，避开整点拥堵
+    # 改为每小时的第 20 分钟执行，避开整点拥堵
     - cron: '20 * * * *'
   
   # 允许在 GitHub 网页端手动触发
